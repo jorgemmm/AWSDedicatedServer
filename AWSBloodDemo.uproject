@@ -1,0 +1,13 @@
+{
+	"FileVersion": 3,
+	"EngineAssociation": "{1D0D1374-4C3F-34B2-CAA4-0899C8FA07B3}",
+	"Category": "",
+	"Description": "",
+	"Modules": [
+		{
+			"Name": "AWSBloodDemo",
+			"Type": "Runtime",
+			"LoadingPhase": "Default"
+		}
+	]
+}
