@@ -2,6 +2,8 @@
 
 
 #include "BaseCharacter.h"
+#include "AWSBloodDemo/Actors/AWSProjectile.h"
+
 
 //Requires for this actor
 #include "Animation/AnimInstance.h"
@@ -33,9 +35,18 @@ ABaseCharacter::ABaseCharacter()
 {
  	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
+	
+	
 	//Initialize the player's Health
 	MaxHealth = 100.0f;
 	CurrentHealth = MaxHealth;
+
+	//Initialite MEc. Gameplay
+	//Initialize projectile class
+	ProjectileClass = AAWSProjectile::StaticClass();
+	//Initialize fire rate
+	FireRate = 0.25f;
+	bIsFiringWeapon = false;
 
 }
 
@@ -109,6 +120,8 @@ void ABaseCharacter::SetupPlayerInputComponent(UInputComponent* PlayerInputCompo
 {
 	Super::SetupPlayerInputComponent(PlayerInputComponent);
 
+	// Handle firing projectiles
+	PlayerInputComponent->BindAction("FireCPP", IE_Pressed, this, &ABaseCharacter::StartFire);
 }
 
 
@@ -189,6 +202,50 @@ void ABaseCharacter::OnHealthUpdate()
 	   Any special functionality that should occur as a result of damage or death should be placed here.
    */
 }
+
+void ABaseCharacter::StartFire()
+{
+	if (!ProjectileClass) {
+		UE_LOG(LogTemp, Error, TEXT("ProjectileClass is nullptr or none at ABaseCharacter :: StartFire"));
+		return;
+
+	}
+	if (!bIsFiringWeapon)
+	{
+		bIsFiringWeapon = true;
+
+		UWorld* World = GetWorld();
+		if (World) {
+			World->GetTimerManager().SetTimer(FiringTimer, this, &ABaseCharacter::StopFire, FireRate, false);
+			HandleFire(World);
+		}
+		else
+		{
+			UE_LOG(LogTemp, Warning, TEXT("UWorld is not loaded at ABaseCharacter :: StartFire"));
+		}
+	}
+}
+void ABaseCharacter::StopFire()
+{
+	bIsFiringWeapon = false;
+}
+
+
+void ABaseCharacter::HandleFire_Implementation(UWorld *const &World)
+{
+	FVector spawnLocation = GetActorLocation() + (GetControlRotation().Vector()  * 100.0f) + (GetActorUpVector() * 50.0f);
+	FRotator spawnRotation = GetControlRotation();
+
+	FActorSpawnParameters spawnParameters;
+	spawnParameters.Instigator = GetInstigator();
+	spawnParameters.Owner = this;
+
+	//AAWSProjectile* spawnedProjectile = GetWorld()->SpawnActor<AAWSProjectile>(spawnLocation, spawnRotation, spawnParameters);
+	World->SpawnActor<AAWSProjectile>(ProjectileClass, spawnLocation, spawnRotation, spawnParameters);
+}
+
+
+
 
 void ABaseCharacter::SetCurrentHealth(float healthValue)
 {
