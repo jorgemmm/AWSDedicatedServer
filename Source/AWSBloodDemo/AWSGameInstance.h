@@ -4,11 +4,15 @@
 
 #include "CoreMinimal.h"
 #include "Engine/GameInstance.h"
+
+#include "OnlineSubsystem.h"
+#include "Interfaces/OnlineSessionInterface.h"
+
 #include "AWSBloodDemo/MenuSystem/MenuInterface.h"
 #include "AWSGameInstance.generated.h"
 
 class UUserWidget;
-//class UMenuInterface;
+class UMenuInterface;
 class UMainMenu;
 class UInGameMenu;
 
@@ -29,7 +33,7 @@ public:
 	//UFUNCTION(Exec)
 	/** Allows other classes to safely Load Menu*/
 	UFUNCTION(BlueprintCallable, Category = "UIMenu")
-		void LoadMenu();
+		void LoadMenuWidget();
 
 	UFUNCTION(BlueprintCallable, Category = "UIMenu")
 		void LoadPause();
@@ -51,7 +55,7 @@ public:
 		void Join(const FString& Address);// override;
 
 	UFUNCTION(Exec)
-		void Quit();// override;
+		void QuitGame();// override;
 
 
 
@@ -75,5 +79,19 @@ private:
 	UMainMenu* Menu;
 
 	UInGameMenu* InGameMenu;
+
+	IOnlineSessionPtr SessionInterfacePtr;
+
+	//TSharedRef< class FOnlineSessionSearch > SessionSearchREF;//(new FOnlineSessionSearch());
+	TSharedPtr< FOnlineSessionSearch>  SessionSearch;
+
+	void OnCreateSessionComplete(FName SessionName, bool Succes);
+	void OnDestroySessionComplete(FName SessionName, bool Success);
+	
+	void OnFindSessionComplete(bool Success);
+
+	void CreateSession();
+
+	void FoundedSession();
 	
 };

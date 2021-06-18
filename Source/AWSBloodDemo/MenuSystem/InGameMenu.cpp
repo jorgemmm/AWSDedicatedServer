@@ -49,7 +49,9 @@ bool UInGameMenu::Initialize()
 	{
 		UE_LOG(LogTemp, Error, TEXT("Quit Button  Not Binding"));
 	}
-
+	if (!SetGameInstanceREF()) {
+		return false;
+	}
 
 	return true;
 }
@@ -84,24 +86,7 @@ void UInGameMenu::CancelPressed()
 
 	
 	
-	//if (MenuInterface != nullptr)
-	{
-		/*UE_LOG(LogTemp, Warning, TEXT("Back The Game Correctly"));*/
-		//Con interfaz es un poco tonto
-		//utilizar la interfaz para dirigirte a GI
-		// y luego el GI se dirige de nuevo al Pause menu
-		//MenuInterface->Cancel();
-
-
-		//Sin interfaz utilizando directamente el binding
-		//TearDown();
-
-	}
-	//else
-	{
-		
-		//UE_LOG(LogTemp, Error, TEXT("IMenuInterface* MenuInterface is none or nullptr"));
-	}
+	
 
 
 
@@ -124,9 +109,14 @@ void UInGameMenu::QuitPressed()
 		if (PC != nullptr)
 		{
 			TearDown(); //call from WB
-
+			
+			if (GetAWSGameInstance()==nullptr)
+			{
+				UE_LOG(LogTemp, Error, TEXT("Host Ref to UAWSGameInstance Failed!!! at HostServer  "));
+				return;
+			}
 			//MenuInterface->ReturnLobby();
-			UAWSGameInstanceRef->LoadMainMenu();
+			GetAWSGameInstance()->LoadMainMenu();
 			//TEnumAsByte 
 			//UKismetSystemLibrary::QuitGame(world, PC, EQuitPreference::Quit, false);
 			UE_LOG(LogTemp, Warning, TEXT("QuitGame Done!"));

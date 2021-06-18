@@ -7,14 +7,17 @@
 #include "Engine/World.h"
 #include "GameFramework/PlayerController.h"
 
+
 #include "Misc/Guid.h"
 
 
 #include "UObject/ConstructorHelpers.h"
 #include "Blueprint/UserWidget.h"
 
+//Tools
 #include "Kismet/GameplayStatics.h"
 #include "Kismet/KismetSystemLibrary.h"
+#include "Templates/SharedPointer.h"
 
 //#include "MenuSystem/MenuInterface.h"
 //
@@ -22,8 +25,15 @@
 #include "AWSBloodDemo/MenuSystem/InGameMenu.h"
 #include "AWSBloodDemo/MenuSystem/MenuInterface.h"
 
+//Online
+//#include "OnlineSubsystem.h"
+//#include "Interfaces/OnlineSessionInterface.h"
+#include "OnlineSessionSettings.h"
 
 
+const static FName SESSION_NAME = TEXT("My Session Game");
+
+const static bool SESSION_IS_LAN = true;
 
 UAWSGameInstance::UAWSGameInstance(const FObjectInitializer & ObjectInitializer)
 {
@@ -73,11 +83,64 @@ UAWSGameInstance::UAWSGameInstance(const FObjectInitializer & ObjectInitializer)
 void UAWSGameInstance::Init()
 {
 	Super::Init();
-
-
-
 	UE_LOG(LogTemp, Warning, TEXT("Gameinstance Init"));
+	IOnlineSubsystem* Subsystem = IOnlineSubsystem::Get();
+	if (Subsystem != nullptr) 
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Found Subsystem %s"), *Subsystem->GetSubsystemName().ToString());
+		SessionInterfacePtr = Subsystem->GetSessionInterface();
+		if (SessionInterfacePtr.IsValid()) 
+		{
+			/*UE_LOG(LogTemp, Warning, TEXT("Found Session"));*/
+			
+			SessionInterfacePtr->OnCreateSessionCompleteDelegates.AddUObject(this, &UAWSGameInstance::OnCreateSessionComplete);
+			SessionInterfacePtr->OnDestroySessionCompleteDelegates.AddUObject(this,  &UAWSGameInstance::OnDestroySessionComplete);
+			
+			SessionInterfacePtr->OnFindSessionsCompleteDelegates.AddUObject(this, &UAWSGameInstance::OnFindSessionComplete);
+				
+			
+			//SessionSearch(new FOnlineSessionSearch());
+			SessionSearch = MakeShareable(new FOnlineSessionSearch());
+			
+			
+			
+			
+			if(SessionSearch.IsValid())
+			{
+				//SessionSearchPointer->bIsLanQuery = true;
+				UE_LOG(LogTemp, Warning, TEXT(" Starting Find Sessions"));				
+				SessionInterfacePtr->FindSessions(0, SessionSearch.ToSharedRef());
+				
+				return;
+			}
 
+			//Otra forma de Hacerlo
+			TSharedRef< class FOnlineSessionSearch > SessionSearchREF = MakeShared<class FOnlineSessionSearch>();
+			TSharedPtr< class FOnlineSessionSearch> SessionSearchPointer = SessionSearchREF;
+			if (SessionSearchPointer.IsValid())
+			{
+				SessionSearchPointer->bIsLanQuery = true;
+				UE_LOG(LogTemp, Warning, TEXT(" Starting Find Sessions"));
+				SessionInterfacePtr->FindSessions(0, SessionSearchREF);
+				return;
+			}
+
+			{
+				UE_LOG(LogTemp, Error, TEXT("Session Search Pointer No valid"));
+			}
+			
+			
+		}
+	}
+	else
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Not Found Subsystem"));
+	}
+
+
+
+
+	/** ya comprobado en LoadMenuWidget y Load Pause
 	if (MenuClass)
 	{
 		UE_LOG(LogTemp, Warning, TEXT("Found class %s"), *MenuClass->GetName());
@@ -96,12 +159,12 @@ void UAWSGameInstance::Init()
 	{
 		UE_LOG(LogTemp, Warning, TEXT("InGameMenuClass class is none or null"));
 	}
-
+	*/
 }
 
 
 
-void UAWSGameInstance::LoadMenu()
+void UAWSGameInstance::LoadMenuWidget()
 {
 	UE_LOG(LogTemp, Warning, TEXT("Gameinstance LoadMenu"));
 
@@ -174,67 +237,104 @@ void UAWSGameInstance::LoadPause()
 }
 
 
+/*Para listen server; pues si dedicated server las sesiones se crean desde el servidor
+y se listan desde findsesion
+Básicamnete sólo hay join
+Se crea una lista de servidores IP:Port
+y clicas para unirte
+*/
 void UAWSGameInstance::Host()
 {
 
 	UE_LOG(LogTemp, Warning, TEXT("AWSGameInstance:: Host.."));
-	
-
-
-		if (Menu != nullptr)
+	//IOnlineSessionPtr	SessionInterfacePtr = Subsystem->GetSessionInterface();
+	if (SessionInterfacePtr.IsValid())
+	{
+		auto ExistingSession = SessionInterfacePtr->GetNamedSession(SESSION_NAME);
+		if (ExistingSession != nullptr)
 		{
-			//Menu->RemoveFromParent();
-			Menu->TearDown();
+			SessionInterfacePtr->DestroySession(SESSION_NAME);
 		}
 		else
 		{
-			UE_LOG(LogTemp, Error, TEXT("MainMenu not loaded at Gameinstance::Host"));
-			UE_LOG(LogTemp, Error, TEXT("MainMenu not remove at Gameinstance::Host"));
+			CreateSession();
 		}
+	}
+
+		
+
+
+}
+
+/*Para listen server*/
+void UAWSGameInstance::OnCreateSessionComplete(FName SessionName, bool Succes)
+{
+	UE_LOG(LogTemp, Warning, TEXT("OnCreateSessionComplete"));
+
+	if(!Succes)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("It couldn't create session"));
+		return;
+	}
+	if (Menu != nullptr)
+	{
+		Menu->TearDown();
+	}
+
+	UEngine* Engine = GetEngine();
+	if (!Engine)
+	{
+		UE_LOG(LogTemp, Error, TEXT("Engine not Loaded at OnCreateSessionComplete ¿?¿?¿?¿?"));		
+		return;
+	}
+	Engine->AddOnScreenDebugMessage(0, 2.0f, FColor::Green, TEXT("OnCreateSessionComplete"));
+	
+	Engine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Yellow, TEXT("I´m Going to AWS server Map!"));
+	
+	UWorld* world = GetWorld();
+	if (!world)
+	{
+		UE_LOG(LogTemp, Error, TEXT("Map content (World) not Loaded ¿?¿?¿"));
+		return;
+	}
+	
+	//world->ServerTravel("/Game/ThirdPersonCPP/Maps/ThirdPersonExampleMap?listen");
+	//world->ServerTravel("127.0.0.1");
+	world->ServerTravel("/Game/Maps/FirstPBloodDemoServerMap?listen");
+
+	//Deicated Server
+	//UGameplayStatics::OpenLevel(GetWorld(), “LevelName”, true, “listen”)//¿?"server");
+	//UGameplayStatics::OpenLevel(GetWorld(), "/Game/Maps/FirstPBloodDemoServerMap?listen");
+	//UGameplayStatics::OpenLevel(GetWorld(), "/Game/Maps/ThirdPBloodDemoServerMap?listen");	
+	
 
 	
 
-		UEngine* Engine = GetEngine();
-		if (!Engine)
-		{
-			UE_LOG(LogTemp, Error, TEXT("Engine not Loaded ¿?¿?¿?¿?"));
-			UE_LOG(LogTemp, Warning, TEXT("Hosting at log"));
-			return;
-		}
-		Engine->AddOnScreenDebugMessage(0, 2.0f, FColor::Green, TEXT("Hosting"));
-		
-
-		UWorld* world = GetWorld();
-
-		if(!world)
-		{
-			UE_LOG(LogTemp, Error, TEXT("Map content (World) not Loaded ¿?¿?¿"));
-			return;		
-		}
-
-
-		UE_LOG(LogTemp, Warning, TEXT("I´m Going to AWS server Map"));
-		//Faltan modulos ¿?
-		//127.0.0.1
-		//Openoworld
-		
-		//
-		//world->ServerTravel("/Game/ThirdPersonCPP/Maps/ThirdPersonExampleMap?listen");
-		//world->ServerTravel("127.0.0.1");
-	    //world->ServerTravel("/Game/Maps/FirstPBloodDemoServerMap?listen");
-		
-		
-			//Dedicated server
-		//UGameplayStatics::OpenLevel(GetWorld(), “LevelName”, true, “listen”)
-		UGameplayStatics::OpenLevel(GetWorld(), "/Game/Maps/FirstPBloodDemoServerMap?listen");
-		//UGameplayStatics::OpenLevel(GetWorld(), "/Game/Maps/FirstPBloodDemoServerMap");
-			
-	
-	    // Put up a debug message for five seconds. The -1 "Key" value (first argument) indicates that we will never need to update or refresh this message.
-		Engine->AddOnScreenDebugMessage(-1, 5.0f, FColor::Yellow, TEXT("I´m Going to AWS server Map!"));
 }
 
 
+
+void UAWSGameInstance::OnDestroySessionComplete(FName SessionName, bool Success)
+{
+	if (Success)
+	{
+		CreateSession();
+	}
+}
+
+
+void UAWSGameInstance::CreateSession()
+{
+	if (SessionInterfacePtr.IsValid()) {
+		FOnlineSessionSettings SessionSettings;
+
+		SessionSettings.bIsLANMatch = SESSION_IS_LAN;
+		SessionSettings.NumPublicConnections = 4;
+		SessionSettings.bShouldAdvertise = true;
+
+		SessionInterfacePtr->CreateSession(0, SESSION_NAME, SessionSettings);
+	}
+}
 
 void UAWSGameInstance::Join(const FString& Address)
 {
@@ -283,7 +383,58 @@ void UAWSGameInstance::Join(const FString& Address)
 
 }
 
-void UAWSGameInstance::Quit()
+
+void UAWSGameInstance::OnFindSessionComplete(bool Success)
+{
+ 
+	if (!Success)
+	{
+		UE_LOG(LogTemp, Error, TEXT("Finishing Not Findind Sessions"));
+		return;
+	}
+	UE_LOG(LogTemp, Warning, TEXT("Finishing Find Sessions"));
+	
+
+	//	if(SessionSearchPointer.IsValid())
+
+	if(SessionSearch.IsValid())
+	{
+		//SessionSearchPointer->bIsLanQuery = true;
+		//for (const FOnlineSessionSearchResult& SearchResult : SessionSearchPointer->SearchResults)
+		for (const FOnlineSessionSearchResult& SearchResult : SessionSearch->SearchResults)
+		{
+			UE_LOG(LogTemp, Warning, TEXT("Found session names: %s"), *SearchResult.GetSessionIdStr());
+		}
+
+		return;
+	}
+	//Otra forma de hacerlo
+	{
+		TSharedRef< class FOnlineSessionSearch > SessionSearchREF = MakeShared<class FOnlineSessionSearch>();
+		TSharedPtr< class FOnlineSessionSearch>  SessionSearchPointer = SessionSearchREF;;
+		if (SessionSearchPointer.IsValid()) 
+		{
+			for (const FOnlineSessionSearchResult& SearchResult : SessionSearchPointer->SearchResults)
+			{
+				UE_LOG(LogTemp, Warning, TEXT("Found session names: %s"), *SearchResult.GetSessionIdStr());
+			}
+			return;
+
+		}
+			
+	}
+
+	{
+		UE_LOG(LogTemp, Error, TEXT("Session Search Pointer No valid"));
+	}
+}
+
+void UAWSGameInstance::FoundedSession()
+{
+ 
+}
+
+void UAWSGameInstance::QuitGame()
 {
 	UE_LOG(LogTemp, Warning, TEXT("Game instance:: Quit Game.."))
 

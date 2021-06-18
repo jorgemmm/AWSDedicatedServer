@@ -29,16 +29,18 @@ private:
 	UPROPERTY(meta = (BindWidget))
 		class UButton* CancelInGameMenuBtn;
 
+
+
 	UPROPERTY(meta = (BindWidget))
-		class UButton* QuitBtn;
+		 class UButton* QuitBtn;
 
 
-
-
-	UFUNCTION()
-		void CancelPressed();
+	
 
 	UFUNCTION()
-		void QuitPressed(); //Aquí regresamos a main menu es decir regresamos al Lobby
+		  void CancelPressed();
+
+	UFUNCTION()
+		  void QuitPressed(); //Aquí regresamos a main menu es decir regresamos al Lobby
 	
 };

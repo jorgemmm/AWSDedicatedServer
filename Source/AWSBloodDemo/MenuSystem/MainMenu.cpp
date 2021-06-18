@@ -25,9 +25,21 @@
 #include "Components/EditableTextBox.h"
 #include "Internationalization/Text.h"
 
+
+#include "AWSBloodDemo/MenuSystem/ServerRow.h"
+
+
+
 //#include "GameFramework/Actor.h"
 
+UMainMenu::UMainMenu(const FObjectInitializer & ObjectInitializer)
+{
+	
+	ConstructorHelpers::FClassFinder<UUserWidget> ServerRowBPClass(TEXT("/Game/UI/WBP_ServerRow"));
+	if (!ensure(ServerRowBPClass.Class != nullptr)) return;
 
+	ServerRowClass = ServerRowBPClass.Class;
+}
 
 
 bool  UMainMenu::Initialize()
@@ -78,6 +90,16 @@ bool  UMainMenu::Initialize()
 		CancelJoinMenuButton->OnClicked.AddDynamic(this, &UMainMenu::OpenMainMenu);
 	}
 
+	if(!QuitBtn)
+	{
+		UE_LOG(LogTemp, Error, TEXT("ExitBtn Button  Not Binding"));
+		return false;
+	}
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Exit Button Binded"));
+		QuitBtn->OnClicked.AddDynamic(this, &UMainMenu::QuitPressed);
+	}
+
 	//Siempre comprobar 
 	/*UWorld* world = GetWorld();
 	if (!world)
@@ -101,82 +123,48 @@ bool  UMainMenu::Initialize()
 		return false;
 	}*/
 
+	
+	if (!SetGameInstanceREF()) {
+		return false;
+	}
+
+
+
+	UWorld* World = this->GetWorld();
+	if (!World) return false;
+
+	UServerRow* Row = CreateWidget<UServerRow>(World, ServerRowClass);
+	if (!Row) return false;
+
+	ServerList->AddChild(Row);
+
 	return true;
 
 
 }
 
 
-//void UMainMenu::Setup()
-//{
-//
-//	//APlayerController* PlayerController = GetWorld()->GetFirstPlayerController();
-//	
-//	UWorld* world = GetWorld();
-//	if (!world)
-//	{
-//		UE_LOG(LogTemp, Error, TEXT("No hay referencia del Nivel Uworld es nulptrl UMainMenu Setup  "));
-//		return;
-//	}
-//	//APlayerController* PC = world->GetFirstPlayerController();
-//	APlayerController* PC = UGameplayStatics::GetPlayerController(GetWorld(), 0);
-//	if (!PC)
-//	{
-//		UE_LOG(LogTemp, Error, TEXT("PlayerController Ref Nullptr in Mainmenu Setup "));
-//		return;
-//	}
-//	
-//	FInputModeUIOnly InputModeUIData;
-//	
-//	InputModeUIData.SetWidgetToFocus(this->TakeWidget());
-//	InputModeUIData.SetLockMouseToViewportBehavior(EMouseLockMode::DoNotLock);
-//
-//	PC->SetInputMode(InputModeUIData);
-//	PC->bShowMouseCursor = true;
-//
-//
-//}
-//
-//void UMainMenu::TearDown()
-//{
-//	this->RemoveFromParent();
-//
-//	
-//	FInputModeGameOnly InputModeGameData;
-//	
-//
-//	UWorld* world = GetWorld();
-//	if (!world)
-//	{
-//		UE_LOG(LogTemp, Error, TEXT("No hay referencia del Nivel Uworld es nulptrl UMainMenu TearDown  "));
-//		return;
-//	}
-//	APlayerController* PC = UGameplayStatics::GetPlayerController(GetWorld(), 0);
-//	if (!PC)
-//	{
-//		UE_LOG(LogTemp, Error, TEXT("PlayerController Ref Nullptr in Mainmenu TearDown "));
-//		return;
-//	}
-//
-//	PC->SetInputMode(InputModeGameData);
-//	PC->bShowMouseCursor = false;
-//
-//}
-//
-
-
 void UMainMenu::HostServer()
 {
 	UE_LOG(LogTemp, Warning, TEXT("I´m gonna host a server!"));
 
-	
+	UWorld* World = GetWorld();
 
-	if (!UAWSGameInstanceRef)
+	if (!World)
+	{
+		UE_LOG(LogTemp, Error, TEXT("World is nullptr at MainMenu QuitPressed "));
+		return;
+	}
+	APlayerController* PlayerController = World->GetFirstPlayerController();
+	if (GetAWSGameInstance()==nullptr)
 	{
 		UE_LOG(LogTemp, Error, TEXT("Host Ref to UAWSGameInstance Failed!!! at HostServer  "));
 		return;
 	}
 
+	//Si dedicated server las sesiones ya estarán precreadas en el servidor
+	// y sólo habrá que encontralas y listarlas
+	//PlayerController->ConsoleCommand("openlevel FirstPBloodDemoServerMap -server");
 	GetAWSGameInstance()->Host();
 	UE_LOG(LogTemp, Warning, TEXT("Host Ref to UAWSGameInstance Correct Done "));
 	return;
@@ -196,13 +184,23 @@ void UMainMenu::HostServer()
 void UMainMenu::JoinServer()
 {
 
-	if (!UAWSGameInstanceRef)
+	if (GetAWSGameInstance()==nullptr)
 	{
 		UE_LOG(LogTemp, Error, TEXT("Host Ref to UAWSGameInstance Failed!!! at JoinServer  "));
 		return;
 	}
-	const FString& IPAddress = IPAddressField->GetText().ToString();
-	GetAWSGameInstance()->Join(IPAddress);
+	/*const FString& IPAddress = IPAddressField->GetText().ToString();
+	
+	GetAWSGameInstance()->Join(IPAddress);*/
+
+	UWorld* World = this->GetWorld();
+	if (!ensure(World != nullptr)) return;
+
+	UServerRow* Row = CreateWidget<UServerRow>(World, ServerRowClass);
+	if (!ensure(Row != nullptr)) return;
+
+	ServerList->AddChild(Row);
+	
 	UE_LOG(LogTemp, Warning, TEXT("Join Ref to UAWSGameInstance Correct Done "));
 	
 }
@@ -226,3 +224,24 @@ void UMainMenu::OpenMainMenu()
 	}
 	MenuSwitcher->SetActiveWidget(MainMenu);
 }
+
+void UMainMenu::QuitPressed()
+{
+	UWorld* World = GetWorld();
+	
+	if (!World) 
+	{
+		UE_LOG(LogTemp, Error, TEXT("World is nullptr at MainMenu QuitPressed "));
+		return;
+	}	
+
+	APlayerController* PlayerController = World->GetFirstPlayerController();
+	if (!PlayerController)
+	{
+		UE_LOG(LogTemp, Error, TEXT("PlayerController is nullptr at MainMenu QuitPressed "));
+		return;
+	}
+
+	PlayerController->ConsoleCommand("quit");
+}
+

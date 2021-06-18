@@ -26,6 +26,9 @@ class AWSBLOODDEMO_API UMainMenu : public UUMenuWidget//public UUserWidget
 
 
 public:
+
+	UMainMenu(const FObjectInitializer & ObjectInitializer);
+
 	/*UFUNCTION()
 		void Setup();
 
@@ -48,6 +51,8 @@ private:
 	//UPROPERTY(meta = (BindWidget))
 	//	UButton* OpenQuitMenuBtn;
 
+	
+
 
 
 	//Butttons Join Back to main menu
@@ -66,6 +71,9 @@ private:
 		UButton* HostBtn;
 
 	UPROPERTY(meta = (BindWidget))
+		class UButton* QuitBtn;
+
+	UPROPERTY(meta = (BindWidget))
 		UWidgetSwitcher* MenuSwitcher;
 
 	/*Size box o elemento widget padre seleccionado del UWidgetSwitcher*/
@@ -76,8 +84,15 @@ private:
 	UPROPERTY(meta = (BindWidget))
 		UWidget* JoinMenu;
 
+	//Enter manual IP server and port
 	UPROPERTY(meta = (BindWidget))
 		UEditableTextBox* IPAddressField;
+
+	UPROPERTY(meta = (BindWidget))
+		UPanelWidget* ServerList;
+
+	TSubclassOf<class UUserWidget> ServerRowClass;
+
 
 	UFUNCTION()
 		void HostServer();
@@ -88,8 +103,13 @@ private:
 	UFUNCTION()
 		void OpenJoinMenu();
 
+	
+
 	UFUNCTION()
 		void OpenMainMenu();
+
+	UFUNCTION()
+		void QuitPressed();
 
 	//UAWSGameInstance* UAWSGameInstanceRef;
 
