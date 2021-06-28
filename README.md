@@ -29,7 +29,9 @@ Normalmente si le das a F7 te compilará solo los cambios. (Depende de la config
 
 Packaging / Empaquetado 
 
-1)  Crea o desarga cualquier template multiplayer. Create 2 maps: EntryMap (Void), and serverMap. In Editor, in Projectsettings-> In Map&modes-> Set Entrymaps as Game and editor defaults 
+1)  Descarga Mi proyecto Multiplayer Quick start https://github.com/jorgemmm/UE4CPPMultiplayerQuickStart.git
+2)  [Opcional] Si lo prefieres puedes abrir un template en tercera persona sin contenido Multiplayer o crearlo tú mismo.
+3)   Create 2 maps: EntryMap (Void), and serverMap. In Editor, in Projectsettings-> In Map&modes-> Set Entrymaps as Game and editor defaults 
 and ServerMap as Server default.
 2) In entry Map: A void Level, en  level blueprint. coloca un nodo begin play que setee un nodo open level que nos lleve a la URL:("127.0.0.1"); 
 (Si dispones de un servidor externo tipo Amazón ponlo aquí: vigila el puerto. Normalmente es 7777 pero si crea varias sesiones el servidor, 
